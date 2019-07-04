@@ -139,7 +139,7 @@ public class GamePanel extends JPanel implements Runnable{
 
     }
 
-    /*private void gameOverMessage(Graphics g){
+    private void gameOverMessage(Graphics g){
         g.drawString(msg,x,y);
-    }*/
+    }
 }
