@@ -134,8 +134,15 @@ public class GamePanel extends JPanel implements Runnable{
 
     private void paintScreen(){
         Graphics g;
-
-    }
+        try {
+            g = this.getGraphics();
+            if((g != null) && (dbImage != null))
+                g.drawImage(dbImage,0,0,null);
+            Toolkit.getDefaultToolkit().sync();
+        } catch (Exception e) {
+            System.out.println("Graphics context error: " +e);
+        }
+    }//end
 
     private void gameOverMessage(Graphics g){
         g.drawString(msg,x,y);
