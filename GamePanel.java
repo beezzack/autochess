@@ -4,16 +4,20 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.sql.Time;
 
 
 public class GamePanel extends JPanel implements Runnable{
     private static final int PWIDTH = 500;
     private static final int PHEIGHT = 400;//game window
+    private static final int NO_DELAYS_PER_YIELD = 16;
+    private static final int MAX_FRAME_SKIPS = 5;
+    private static final int period = 17; //60FPS  1000/60 = 16.77777
 
     private Thread animator; //for animation
     private volatile boolean running = false; //stops animation
-
     private volatile boolean gameOver = false; //for game termination
+    private volatile boolean isPaused = false;
 
     public GamePanel(){
         setBackground(Color.white);
@@ -53,7 +57,7 @@ public class GamePanel extends JPanel implements Runnable{
 
     private void testPress(int x, int y){
         //is (x,y) important to Game?
-        if(!gameOver){
+        if(!isPaused && !gameOver){
             //do Something
         }
     }
@@ -73,19 +77,52 @@ public class GamePanel extends JPanel implements Runnable{
         startGame();
     }
     private void stopGame(){ running = false;}
+    private void pausedGame(){isPaused = true;}
 
     public void run(){
+        long beforeTime,afterTime, timeDiff, sleepTime;
+        long overSleepTime = 0L;
+        int noDelays = 0;
+        long excess = 0L;
+        beforeTime = System.nanoTime();
+
         running = true;
         while(running){
+            gameUpdate();
             gameUpdate();
             gameRender();
             //repaint();
 
             //active rendering
             paintScreen();
-            try{
-                Thread.sleep(20);
-            }catch (InterruptedException ex){}
+
+            afterTime = System.nanoTime();
+            timeDiff = afterTime - beforeTime;
+            sleepTime = (period - timeDiff) - overSleepTime;//period :iteration cost time;
+
+            if(sleepTime > 0){
+                try{
+                    Thread.sleep(sleepTime/10000000L);//nano -> ms
+                }catch (InterruptedException ex){}
+                overSleepTime = (System.nanoTime() - afterTime) - sleepTime;
+            }
+            else{ //sleep < 0; frame took longer than the period
+                excess -= sleepTime;
+                overSleepTime = 0L;
+
+                if(++noDelays >= NO_DELAYS_PER_YIELD){
+                    Thread.yield(); //give another thread to run
+                    noDelays = 0;
+                }
+            }
+            beforeTime = System.nanoTime();
+
+            int skips = 0;
+            while((excess >= period)&&(skips <= MAX_FRAME_SKIPS)){
+                excess -= period;
+                gameUpdate();
+                skips++;
+            }
         }
         System.exit(0);
     }
@@ -147,4 +184,6 @@ public class GamePanel extends JPanel implements Runnable{
     private void gameOverMessage(Graphics g){
         g.drawString(msg,x,y);
     }
+
+
 }
